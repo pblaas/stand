@@ -161,7 +161,6 @@ try:
         with open('cluster.status', 'w') as etcdstat:
             etcdstat.write(clusterstatusconfig_template)
 
-
     if args.nodes < 3:
         raise Exception('nodes need to be no less then 3.')
 
