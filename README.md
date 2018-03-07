@@ -1,6 +1,9 @@
-# stand
+# Stand
 Stand is a project to generate CloudLinux configs and terraform files to bootstrap a HA etcd cluster with with flannel support on top of OpenStack.
 
+Use cases for this project are:
+* HA etcd cluster
+* Multi container host with flannel network fabric
 
 ### Usage:
 ```
