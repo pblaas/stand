@@ -205,6 +205,10 @@ resource "openstack_compute_instance_v2" "stand-{{ clustername }}-node{{ counter
 
 {% endfor %}
 
+resource "openstack_compute_floatingip_associate_v2" "fip_{{ clustername }}_f1" {
+  instance_id = "${openstack_compute_instance_v2.k8s-{{ clustername }}-node10.id}"
+  floating_ip = "{{ floatingip1 }}"
+}
 
 
 
