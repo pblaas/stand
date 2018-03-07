@@ -55,10 +55,10 @@ args = parser.parse_args()
 template = TEMPLATE_ENVIRONMENT.get_template('etcd.tf.tmpl')
 cloudconf_template = TEMPLATE_ENVIRONMENT.get_template('etcdcloudconf.yaml.tmpl')
 opensslmanager_template = TEMPLATE_ENVIRONMENT.get_template('./tls/openssl.cnf.tmpl')
+clusterstatus_template = TEMPLATE_ENVIRONMENT.get_template('cluster.status.tmpl')
 
 try:
     # Create CA certificates
-
     def createCaCert():
         """Create CA certificates."""
 
@@ -121,6 +121,46 @@ try:
         global rsakey
         rsakey = subprocess.check_output(["openstack", "keypair", "show", "--public-key", args.keypair]).strip()
         return rsakey
+
+    def printClusterInfo():
+        """Print cluster info."""
+        print("-" * 40 + "\n\nCluster Info:")
+        print("Core password:\t" + str(password))
+        print("Keypair:\t" + str(rsakey))
+        print("etcd vers:\t" + str(args.etcdver))
+        print("Flannel vers:\t" + str(args.flannelver))
+        print("Clustername:\t" + str(args.clustername))
+        print("Cluster cidr:\t" + str(args.subnetcidr))
+        print("Pod Cidr:\t" + str(args.podcidr))
+        print("Nodes:\t" + str(args.nodes))
+        print("Image flavor:\t" + str(args.imageflavor))
+        print("Glance imgname:\t" + str(args.glanceimagename))
+        print("VIP1:\t\t" + str(args.floatingip1))
+        print("Dnsserver:\t" + str(args.dnsserver))
+        print("-" * 40 + "\n")
+        print("To start building the cluster: \tterraform init && terraform plan && terraform apply && sh snat_acl.sh")
+        print("To interact with the cluster: \tsh kubeconfig.sh")
+
+        clusterstatusconfig_template = (clusterstatus_template.render(
+            etcdendpointsurls=iplist.rstrip(','),
+            password=password,
+            clustername=args.clustername,
+            subnetcidr=args.subnetcidr,
+            nodes=args.nodes,
+            imageflavor=args.imageflavor,
+            glanceimagename=args.glanceimagename,
+            floatingip1=args.floatingip1,
+            dnsserver=args.dnsserver,
+            podcidr=args.podcidr,
+            flannelver=args.flannelver,
+            etcdver=args.etcdver,
+            keypair=args.keypair,
+            rsakey=rsakey,
+        ))
+
+        with open('cluster.status', 'w') as etcdstat:
+            etcdstat.write(clusterstatusconfig_template)
+
 
     if args.nodes < 3:
         raise Exception('nodes need to be no less then 3.')
@@ -191,5 +231,4 @@ try:
 except Exception as e:
     raise
 else:
-    print("Cluster config is ready.")
-    print("terraform apply && ./snat_acl.sh")
+    printClusterInfo()
