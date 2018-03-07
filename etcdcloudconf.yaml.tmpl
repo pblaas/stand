@@ -1,0 +1,237 @@
+etcd:
+  version:                     "{{ etcdver }}"
+  advertise_client_urls:       "https://{{ ipaddress }}:2379"
+  initial_advertise_peer_urls: "https://{{ ipaddress }}:2380"
+  listen_client_urls:          "http://127.0.0.1:2379,https://{{ ipaddress }}:2379"
+  listen_peer_urls:            "https://{{ ipaddress }}:2380"
+  name:                        "infra{{ etcdid }}"
+  initial_cluster:             "{{ initialclusterlist }}"
+  initial_cluster_token:       "etcd-cluster-{{ etcdtoken }}"
+  initial_cluster_state:       "new"
+  cert_file:                   "/etc/ssl/certs/{{ ipaddress }}-etcd-node.pem"
+  key_file:                    "/etc/ssl/certs/{{ ipaddress }}-etcd-node-key.pem"
+  trusted_ca_file:             "/etc/ssl/certs/etcd-ca.pem"
+  client_cert_auth:            true
+  peer_cert_file:              "/etc/ssl/certs/{{ ipaddress }}-etcd-node.pem"
+  peer_key_file:               "/etc/ssl/certs/{{ ipaddress }}-etcd-node-key.pem"
+  peer_trusted_ca_file:        "/etc/ssl/certs/etcd-ca.pem"
+  peer_client_cert_auth:       true
+
+networkd:
+  units:
+    - name: "00-eth.network"
+      contents: |
+        [Match]
+        Name=eth0
+        [Network]
+        DNS={{ dnsserver }}
+        Address={{ ipaddress }}
+        Gateway={{ ipaddressgw }}
+
+passwd:
+  users:
+    - name: core
+      password_hash: {{ cryptedPass }}
+      ssh_authorized_keys: [
+        "{{ sshkey }}"
+      ]
+      groups:
+        - "sudo"
+        - "docker"
+
+docker:
+  flags:
+    - --debug
+
+flannel:
+  interface: {{ ipaddress }}
+  version: "{{ flannelver }}"
+  network_config: '{ "Network": "10.244.0.0/16", "Backend":{"Type":"vxlan"}}'
+  etcd_endpoints: {{ etcdendpointsurls }}
+  etcd_keyfile: /etc/ssl/certs/{{ ipaddress }}-etcd-node-key.pem
+  etcd_certfile: /etc/ssl/certs/{{ ipaddress }}-etcd-node.pem
+  etcd_cafile: /etc/ssl/certs/etcd-ca.pem
+
+
+systemd:
+  units:
+    - name: vm.max_map_count.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Set vm.max_map_count
+        [Service]
+        ExecStart=/bin/sh -c "sysctl -w vm.max_map_count=384000"
+        RemainAfterExit=yes
+        Type=oneshot
+        [Install]
+        WantedBy=multi-user.target
+    - name: increase-nf_conntrack-connections.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Increase the number of connections in nf_conntrack.
+        [Service]
+        Type=idle
+        ExecStartPre=/usr/sbin/modprobe nf_conntrack
+        ExecStart=/bin/sh -c "sysctl -w net.netfilter.nf_conntrack_max=589824"
+        Restart=on-failure
+        [Install]
+        WantedBy=multi-user.target
+    - name: increase-nf_conntrack-hashsize.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Increase the nf_conntrack hashsize.
+        [Service]
+        Type=idle
+        ExecStart=/bin/sh -c "echo 147456 > /sys/module/nf_conntrack/parameters/hashsize"
+        Restart=on-failure
+        [Install]
+        WantedBy=multi-user.target
+    - name: increase-port_range.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Increase port_range.
+        [Service]
+        Type=oneshot
+        ExecStart=/bin/sh -c "echo 1024 65535 > /proc/sys/net/ipv4/ip_local_port_range"
+        [Install]
+        WantedBy=multi-user.target
+    - name: increase-net.core.somaxconn.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Increase net.core.somaxconn.
+        [Service]
+        Type=oneshot
+        ExecStart=/bin/sh -c "sysctl -w net.core.somaxconn=256"
+        [Install]
+        WantedBy=multi-user.target
+    - name: change-conntrack_timeout.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=change conntrack tcp timeout.
+        [Service]
+        Type=idle
+        ExecStart=/bin/sh -c "sysctl -w net.netfilter.nf_conntrack_tcp_timeout_time_wait=1"
+        Restart=on-failure
+        [Install]
+        WantedBy=multi-user.target
+    - name: change-tcp_timeout_estab.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=change tcp timeout estab.
+        [Service]
+        Type=idle
+        ExecStart=/bin/sh -c "sysctl -w net.netfilter.nf_conntrack_tcp_timeout_established=600"
+        Restart=on-failure
+        [Install]
+        WantedBy=multi-user.target
+    - name: settimezone.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Set the time zone
+        [Service]
+        ExecStart=/usr/bin/timedatectl set-timezone Europe/Amsterdam
+        RemainAfterExit=yes
+        Type=oneshot
+        [Install]
+        WantedBy=multi-user.target
+    - name: systemd-sysctl.service
+      enabled: true
+    - name: "ntpd.service"
+      enabled: true
+    - name: "docker.service"
+      enabled: true
+ 
+locksmith:
+  reboot_strategy: "etcd-lock"
+  etcd_endpoints:  {{ etcdendpointsurls }}
+  etcd_keyfile: /etc/ssl/certs/{{ ipaddress }}-etcd-node-key.pem
+  etcd_certfile: /etc/ssl/certs/{{ ipaddress }}-etcd-node.pem
+  etcd_cafile: /etc/ssl/certs/etcd-ca.pem
+  window_start: "Thu 04:00"
+  window_length: "1h"
+
+storage:
+  files:
+    - filesystem: "root"
+      path:       "/etc/hostname"
+      mode:       0644
+      contents:
+        inline: {{ ipaddress }}
+    - filesystem: "root"
+      path: "/etc/resolv.conf"
+      mode: 0644
+      contents:
+        inline: |
+          nameserver {{ dnsserver }}
+    - filesystem: "root"
+      path: "/home/core/.bashrc"
+      mode: 0644
+      contents:
+        inline: |
+          if [[ $- != *i* ]] ; then
+            return
+          fi
+          export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/opt/bin:$PWD
+    - filesystem: "root"
+      path: "/etc/motd.d/k8s.conf"
+      mode: 0644
+      contents:
+        local: "../motd.conf"
+    - filesystem: "root"
+      path:       "/etc/kubernetes/docker-environment.env"
+      mode:       0644
+      contents:
+        inline: |
+          DOCKER_OPT_BIP="--bip=172.17.0.1/24"
+          DOCKER_OPT_IPMASQ="--ip-masq=false"
+          DOCKER_OPT_MTU="--mtu=1450"
+    - filesystem: "root"
+      path: "/etc/kubernetes/cni/docker_opts_cni.env"
+      mode: 0664
+      contents:
+        inline: |
+          DOCKER_OPT_BIP=""
+          DOCKER_OPT_IPMASQ=""
+    - filesystem: "root"
+      path: "/etc/kubernetes/cni/net.d/10-flannel.conf"
+      mode: 0644
+      contents:
+        inline: |
+          {
+            "name": "podnet",
+            "type": "flannel",
+            "delegate": {
+              "isDefaultGateway": true
+            }
+          }
+    - filesystem: "root"
+      path: "/home/core/etcdinfo.sh"
+      mode: 0665
+      contents:
+        inline: |
+          /usr/bin/etcdctl --cert-file=/etc/ssl/certs/{{ ipaddress }}-etcd-node.pem --key-file=/etc/ssl/certs/{{ ipaddress }}-etcd-node-key.pem --ca-file=/etc/ssl/certs/etcd-ca.pem  cluster-health
+    - filesystem: "root"
+      path: "/etc/ssl/certs/{{ ipaddress }}-etcd-node-key.pem"
+      mode: 0664
+      contents:
+        local: "{{ ipaddress }}-etcd-node-key.pem"
+    - filesystem: "root"
+      path: "/etc/ssl/certs/{{ ipaddress }}-etcd-node.pem"
+      mode: 0664
+      contents:
+        local: "{{ ipaddress }}-etcd-node.pem"
+    - filesystem: "root"
+      path: "/etc/ssl/certs/etcd-ca.pem"
+      mode: 0664
+      contents:
+        local: "etcd-ca.pem"
+
+ 
