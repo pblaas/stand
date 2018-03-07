@@ -132,7 +132,7 @@ try:
         print("Clustername:\t" + str(args.clustername))
         print("Cluster cidr:\t" + str(args.subnetcidr))
         print("Pod Cidr:\t" + str(args.podcidr))
-        print("Nodes:\t" + str(args.nodes))
+        print("Nodes:\t\t" + str(args.nodes))
         print("Image flavor:\t" + str(args.imageflavor))
         print("Glance imgname:\t" + str(args.glanceimagename))
         print("VIP1:\t\t" + str(args.floatingip1))
