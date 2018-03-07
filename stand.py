@@ -134,7 +134,7 @@ try:
         print("VIP1:\t\t" + str(args.floatingip1))
         print("Cluster cidr:\t" + str(args.subnetcidr))
         print("Pod Cidr:\t" + str(args.podcidr))
-        print("Dnsserver:\t" + str(args.dnsserver))        
+        print("Dnsserver:\t" + str(args.dnsserver))
         print("Nodes:\t\t" + str(args.nodes))
         print("Keypair:\t" + str(rsakey))
         print("-" * 40 + "\n")
