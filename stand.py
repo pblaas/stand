@@ -119,8 +119,7 @@ try:
     def returnPublicKey():
         """Retrieve rsa-ssh public key from OpenStack."""
         global rsakey
-        # rsakey = subprocess.check_output(["openstack", "keypair", "show", "--public-key", args.keypair]).strip()
-        rsakey = "rsa aaaaajsjsjsjsj"
+        rsakey = subprocess.check_output(["openstack", "keypair", "show", "--public-key", args.keypair]).strip()
         return rsakey
 
     if args.nodes < 3:
