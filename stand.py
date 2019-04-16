@@ -12,7 +12,7 @@ from jinja2 import Environment, FileSystemLoader
 
 __author__ = "Patrick Blaas <patrick@kite4fun.nl>"
 __license__ = "GPL v3"
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __status__ = "Active"
 
 PATH = os.path.dirname(os.path.abspath(__file__))
@@ -48,8 +48,8 @@ parser.add_argument("--nodes", help="Number of etcd servers - (3)", type=int, de
 parser.add_argument("--imageflavor", help="Manager image flavor ID - (2004)", type=int, default=2004)
 parser.add_argument("--glanceimagename", help="Glance image name ID - (Container Linux CoreOS (third-party)", default="Container Linux CoreOS (third-party)")
 parser.add_argument("--dnsserver", help="DNS server - (8.8.8.8)", default="8.8.8.8")
-parser.add_argument("--etcdver", help="ETCD version - (3.3.1)", default="3.3.1")
-parser.add_argument("--flannelver", help="Flannel image version - (0.10.0)", default="0.10.0")
+parser.add_argument("--etcdver", help="ETCD version - (3.3.12)", default="3.3.12")
+parser.add_argument("--flannelver", help="Flannel image version - (0.11.0)", default="0.11.0")
 args = parser.parse_args()
 
 template = TEMPLATE_ENVIRONMENT.get_template('etcd.tf.tmpl')
